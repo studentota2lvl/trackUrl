@@ -1,4 +1,5 @@
 #!/bin/bash
+# Script for setup track location server 
 
 #~~~~~~~~~~~~~~~~~~ variables ~~~~~~~~~~~~~~~~~~
 htmlLink="https://raw.githubusercontent.com/studentota2lvl/trackUrl/master/index.html"
@@ -56,6 +57,7 @@ function usage() {
     \n\t\t    -h, --help      \t\t show help
     \n\t\t    -s, --setup     \t full setup
     \n\t\t    -i, --image     \t set custom image to page, like '-i http://link/to/image'
+    \n\t\t    -u, --update     \t update server (restart nginx and ngrok)
     \n
     \n\tif you don't specify any parameter, the solution will be restart."
 
@@ -84,8 +86,12 @@ else
                         usage
                         exit
                         ;;
-            * )         
+            -u | --update )
                         updateService
+                        exit
+                        ;;
+            * )         
+                        usage
                         exit
                         ;;
         esac
