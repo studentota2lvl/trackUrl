@@ -1,5 +1,6 @@
 #!/bin/bash
 # Script for setup track location server 
+# created by Andrii Rudyi, email: studentota2lvl@gmail.com
 
 #~~~~~~~~~~~~~~~~~~ variables ~~~~~~~~~~~~~~~~~~
 htmlLink="https://raw.githubusercontent.com/studentota2lvl/trackUrl/master/index.html"
@@ -9,7 +10,7 @@ ngrok_64Link="https://github.com/studentota2lvl/trackUrl/blob/master/ngrok_64?ra
 imageLink="https://raw.githubusercontent.com/studentota2lvl/trackUrl/master/image"
 iconLink="https://raw.githubusercontent.com/studentota2lvl/trackUrl/master/favicon.ico"
 logged_user=$(who | tr -d '\n'| cut -d' ' -f1);
-workDir="~/trackUrl"
+workDir="/home/$logged_user/trackUrl"
 
 #~~~~~~~~~~~~~~~~~~ functions ~~~~~~~~~~~~~~~~~~
 function createWorkdir() {
@@ -27,20 +28,18 @@ function installApp() {
 
 function downloadFiles() {
     cd $workDir;
-    wget $htmlLink -O ./index.html;
-    wget $nginxConfLink -O ./nginx.conf;
-    wget $ngrokLink -O ./ngrok;
-    wget $ngrok_64Link -O ./ngrok_64;
+    wget -q $htmlLink -O ./index.html;
+    wget -q $nginxConfLink -O ./nginx.conf;
+    wget -q $ngrokLink -O ./ngrok;
+    wget -q $ngrok_64Link -O ./ngrok_64;
     chmod 755 ./ngrok*;
-    wget $imageLink -O ./image;
-    wget $iconLink -O ./favicon.ico;
+    wget -q $imageLink -O ./image;
+    wget -q $iconLink -O ./favicon.ico;
     chown -R $logged_user:$logged_user $workDir;
 }
 
 function prepareService() {
-    publickIP=$(curl https://api.ipify.org/);
     cd $workDir;
-    sed -i "s#localhost#$publickIP#g" ./index.html;
     cp ./index.html /var/www/html/index.html;
     cp -f ./nginx.conf /etc/nginx/sites-available/default;
     cp -f ./image /var/www/html/image;
@@ -48,11 +47,23 @@ function prepareService() {
     chown -R $logged_user:$logged_user /var/www/;
 }
 
-function updateService() {
+function updateNginxService() {
     service nginx restart;
+}
+
+function changeRestUrl() {
+    # publickIP=$(curl https://api.ipify.org/);
+    # redirectAddr=$(cat ./logfile | grep -Eo "https://[a-zA-Z0-9./?=_-]*" | sort -u);
+    sleep 20
+    redirectAddr=$(curl -s http://localhost:4040/api/tunnels | grep -Eo "https://[a-zA-Z0-9./?=_-]*" | sort -u);
+    cp -f ./index.html /var/www/html/index.html;
+    sed -i "s#localhost#_$redirectAddr#g" /var/www/html/index.html;
+}
+
+function updateNgrokService() {
     cd $workDir;
-    sleep 10;
-    ./ngrok http 80;
+    changeRestUrl &
+    ./ngrok http 80
 }
 
 function usage() {
@@ -61,7 +72,7 @@ function usage() {
     \n\t\t    -h, --help      \t\t show help
     \n\t\t    -s, --setup     \t full setup
     \n\t\t    -i, --image     \t set custom image to page, like '-i http://link/to/image'
-    \n\t\t    -u, --update     \t update server (restart nginx and ngrok)
+    \n\t\t    -u, --update     \t update server (restart nginx)
     \n
     \n\tif you don't specify any parameter, the solution will be restart."
 
@@ -79,8 +90,9 @@ else
                         createWorkdir
                         installApp
                         downloadFiles
+                        updateNgrokService
                         prepareService
-                        updateService
+                        updateNginxService
                         ;;
             -i | --image )
                         shift
@@ -91,7 +103,8 @@ else
                         exit
                         ;;
             -u | --update )
-                        updateService
+                        updateNgrokService
+                        updateNginxService
                         exit
                         ;;
             * )         
