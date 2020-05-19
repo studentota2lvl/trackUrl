@@ -9,8 +9,13 @@ ngrok_64Link="https://github.com/studentota2lvl/trackUrl/blob/master/ngrok_64?ra
 imageLink="https://raw.githubusercontent.com/studentota2lvl/trackUrl/master/image"
 iconLink="https://raw.githubusercontent.com/studentota2lvl/trackUrl/master/favicon.ico"
 logged_user=$(who | tr -d '\n'| cut -d' ' -f1);
+workDir="~/trackUrl"
 
 #~~~~~~~~~~~~~~~~~~ functions ~~~~~~~~~~~~~~~~~~
+function createWorkdir() {
+    mkdir -p $workDir && cd $_;
+}
+
 function installApp() {
     apt-get -y update;
     apt-get -y install nginx;
@@ -21,6 +26,7 @@ function installApp() {
 }
 
 function downloadFiles() {
+    cd $workDir;
     wget $htmlLink -O ./index.html;
     wget $nginxConfLink -O ./nginx.conf;
     wget $ngrokLink -O ./ngrok;
@@ -28,27 +34,25 @@ function downloadFiles() {
     chmod 755 ./ngrok*;
     wget $imageLink -O ./image;
     wget $iconLink -O ./favicon.ico;
-    chown -R logged_user:logged_user ~/trackUrl;
+    chown -R $logged_user:$logged_user $workDir;
 }
 
 function prepareService() {
     publickIP=$(curl https://api.ipify.org/);
+    cd $workDir;
     sed -i "s#localhost#$publickIP#g" ./index.html;
     cp ./index.html /var/www/html/index.html;
     cp -f ./nginx.conf /etc/nginx/sites-available/default;
     cp -f ./image /var/www/html/image;
     cp -f ./favicon.ico /var/www/html/favicon.ico;
-    chown -R logged_user:logged_user /var/www/;
+    chown -R $logged_user:$logged_user /var/www/;
 }
 
 function updateService() {
     service nginx restart;
+    cd $workDir;
     sleep 10;
     ./ngrok http 80;
-}
-
-function createWorkdir() {
-    mkdir -p ~/trackUrl && cd $_;
 }
 
 function usage() {
