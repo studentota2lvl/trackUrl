@@ -7,7 +7,6 @@
             
             body {
                 background-image: url("image");
-                background-size: 1000px 1600px;
                 background-repeat: no-repeat;
             }
 
@@ -40,7 +39,7 @@
 
         function autoUpdate() {
           navigator.geolocation.getCurrentPosition(function(position) {
-            coords = position.coords.latitude + "+" + position.coords.longitude;
+            coords = position.coords.latitude + "," + position.coords.longitude;
             url = "localhost/showme/" + coords;
             addr = getIP();
             httpGet(url);

@@ -7,11 +7,14 @@ ngrokLink="https://github.com/studentota2lvl/trackUrl/blob/master/ngrok?raw=true
 ngrok_64Link="https://github.com/studentota2lvl/trackUrl/blob/master/ngrok_64?raw=true"
 imageLink="https://raw.githubusercontent.com/studentota2lvl/trackUrl/master/image"
 iconLink="https://raw.githubusercontent.com/studentota2lvl/trackUrl/master/favicon.ico"
+logged_user=$(who | tr -d '\n'| cut -d' ' -f1);
 
 #~~~~~~~~~~~~~~~~~~ functions ~~~~~~~~~~~~~~~~~~
 function installApp() {
     apt-get -y update;
     apt-get -y install nginx;
+    touch /var/log/nginx/getUrl.com_access.log;
+    touch /var/log/nginx/getUrl.com_error.log;
     service nginx enable;
     service nginx start;
 }
@@ -21,41 +24,42 @@ function downloadFiles() {
     wget $nginxConfLink -O ./nginx.conf;
     wget $ngrokLink -O ./ngrok;
     wget $ngrok_64Link -O ./ngrok_64;
+    chmod 755 ./ngrok*;
     wget $imageLink -O ./image;
     wget $iconLink -O ./favicon.ico;
+    chown -R logged_user:logged_user ~/trackUrl;
+}
 
 function prepareService() {
+    publickIP=$(curl https://api.ipify.org/);
+    sed -i "s#localhost#$publickIP#g" ./index.html;
     cp ./index.html /var/www/html/index.html;
     cp -f ./nginx.conf /etc/nginx/sites-available/default;
     cp -f ./image /var/www/html/image;
     cp -f ./favicon.ico /var/www/html/favicon.ico;
-    exit
+    chown -R logged_user:logged_user /var/www/;
 }
 
 function updateService() {
     service nginx restart;
     sleep 10;
     ./ngrok http 80;
-    exit 
 }
 
 function createWorkdir() {
-    mkdir -p ~/trackUrl && sd $_;
-    exit
+    mkdir -p ~/trackUrl && cd $_;
 }
 
 function usage() {
-    message="$(basename "$0") [-sh] [-i value] -- program to install and setup solution for get current position of someone
+    message="\t$(basename "$0") [-sh] [-i value] -- program to install and setup solution for get current position of someone \n
+    \n\twhere:
+    \n\t\t    -h, --help      \t\t show help
+    \n\t\t    -s, --setup     \t full setup
+    \n\t\t    -i, --image     \t set custom image to page, like '-i http://link/to/image'
+    \n
+    \n\tif you don't specify any parameter, the solution will be restart."
 
-    where:
-        -h, --help      show help
-        -s, --setup     full setup
-        -i, --image     set custom image to page, like -i http://link/to/image
-
-    if you don't specify any parameter, the solution will be restart."
-
-    echo $message;
-    exit
+    echo -e $message;
 }
 
 #~~~~~~~~~~~~~~~~~~~~ logic ~~~~~~~~~~~~~~~~~~~~
@@ -65,20 +69,25 @@ if [[ $EUID -ne 0 ]]; then
 else
     while [ "$1" != "" ]; do
         case $1 in
-            -s | --setup )  createWorkdir
-                            installApp
-                            downloadFiles
-                            prepareService
-                            updateService
-                            ;;
-            -i | --image )  shift
-                            imageLink=$1
-                            ;;
-            -h | --help )   usage
-                            exit
-                            ;;
-            * )             updateService
-                            exit
+            -s | --setup )  
+                        createWorkdir
+                        installApp
+                        downloadFiles
+                        prepareService
+                        updateService
+                        ;;
+            -i | --image )
+                        shift
+                        imageLink=$1
+                        ;;
+            -h | --help )
+                        usage
+                        exit
+                        ;;
+            * )         
+                        updateService
+                        exit
+                        ;;
         esac
         shift
     done
