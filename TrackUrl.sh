@@ -110,6 +110,7 @@ else
                         exit
                         ;;
             * )         
+						echo "Wrong script parameter: $1. Please use \"sudo ./script.sh --help\""
                         ;;
         esac
         shift
