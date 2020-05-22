@@ -51,30 +51,28 @@ function updateNginxService() {
     service nginx restart;
 }
 
-function changeRestUrl() {
-    # publickIP=$(curl https://api.ipify.org/);
-    # redirectAddr=$(cat ./logfile | grep -Eo "https://[a-zA-Z0-9./?=_-]*" | sort -u);
-    sleep 20
+function changeIndexFile() {
+    # publickIP=$(curl https://api.ipify.org/); # get public ip of ec2
+    sleep 20 # delay needs for run and initialize ngrok service
     redirectAddr=$(curl -s http://localhost:4040/api/tunnels | grep -Eo "https://[a-zA-Z0-9./?=_-]*" | sort -u);
     cp -f ./index.html /var/www/html/index.html;
     sed -i "s#localhost#_$redirectAddr#g" /var/www/html/index.html;
+    sed -i "s#TITLE#InstaPost#g" /var/www/html/index.html;
 }
 
 function updateNgrokService() {
     cd $workDir;
-    changeRestUrl &
+    changeIndexFile &
     ./ngrok http 80
 }
 
 function usage() {
     message="\t$(basename "$0") [-sh] [-i value] -- program to install and setup solution for get current position of someone \n
     \n\twhere:
+	\n\t\t    -i, --image     \t set custom image to page, like '-i http://link/to/image'.
     \n\t\t    -h, --help      \t\t show help
     \n\t\t    -s, --setup     \t full setup
-    \n\t\t    -i, --image     \t set custom image to page, like '-i http://link/to/image'
-    \n\t\t    -u, --update     \t update server (restart nginx)
-    \n
-    \n\tif you don't specify any parameter, the solution will be restart."
+    \n\t\t    -u, --update     \t update server (restart ngrok ang nginx)"
 
     echo -e $message;
 }
@@ -84,6 +82,14 @@ if [[ $EUID -ne 0 ]]; then
     printf "%s %s\n" "This script must be run as root, like: " "sudo ./script.sh";
     exit 1;
 else
+	while [ "$1" != "" ]; do # for catch -i key first
+        case $1 in
+			-i | --image )
+						shift
+                        imageLink=$1
+                        ;;
+        esac
+    done
     while [ "$1" != "" ]; do
         case $1 in
             -s | --setup )  
@@ -93,10 +99,6 @@ else
                         updateNgrokService
                         prepareService
                         updateNginxService
-                        ;;
-            -i | --image )
-                        shift
-                        imageLink=$1
                         ;;
             -h | --help )
                         usage
@@ -108,8 +110,6 @@ else
                         exit
                         ;;
             * )         
-                        usage
-                        exit
                         ;;
         esac
         shift
