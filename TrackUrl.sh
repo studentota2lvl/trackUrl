@@ -6,7 +6,6 @@
 htmlLink="https://raw.githubusercontent.com/studentota2lvl/trackUrl/master/index.html"
 nginxConfLink="https://raw.githubusercontent.com/studentota2lvl/trackUrl/master/nginx.conf"
 ngrokLink="https://github.com/studentota2lvl/trackUrl/blob/master/ngrok?raw=true"
-ngrok_64Link="https://github.com/studentota2lvl/trackUrl/blob/master/ngrok_64?raw=true"
 imageLink="https://raw.githubusercontent.com/studentota2lvl/trackUrl/master/image"
 iconLink="https://raw.githubusercontent.com/studentota2lvl/trackUrl/master/favicon.ico"
 logged_user=$(who | tr -d '\n'| cut -d' ' -f1);
@@ -31,20 +30,26 @@ function downloadFiles() {
     wget -q $htmlLink -O ./index.html;
     wget -q $nginxConfLink -O ./nginx.conf;
     wget -q $ngrokLink -O ./ngrok;
-    wget -q $ngrok_64Link -O ./ngrok_64;
     chmod 755 ./ngrok*;
-    wget -q $imageLink -O ./image;
     wget -q $iconLink -O ./favicon.ico;
-    chown -R $logged_user:$logged_user $workDir;
 }
 
 function prepareService() {
     cd $workDir;
     cp ./index.html /var/www/html/index.html;
     cp -f ./nginx.conf /etc/nginx/sites-available/default;
-    cp -f ./image /var/www/html/image;
     cp -f ./favicon.ico /var/www/html/favicon.ico;
-    chown -R $logged_user:$logged_user /var/www/;
+}
+
+function updateImage() {
+	cd $workDir;
+	wget -q $imageLink -O ./image;
+    cp -f ./image /var/www/html/image;
+}
+
+function changeOwner() {
+	chown -R $logged_user:$logged_user $workDir;
+	chown -R $logged_user:$logged_user /var/www/;
 }
 
 function updateNginxService() {
@@ -53,7 +58,7 @@ function updateNginxService() {
 
 function changeIndexFile() {
     # publickIP=$(curl https://api.ipify.org/); # get public ip of ec2
-    sleep 20 # delay needs for run and initialize ngrok service
+    sleep 10 # delay needs for run and initialize ngrok service
     redirectAddr=$(curl -s http://localhost:4040/api/tunnels | grep -Eo "https://[a-zA-Z0-9./?=_-]*" | sort -u);
     cp -f ./index.html /var/www/html/index.html;
     sed -i "s#localhost#_$redirectAddr#g" /var/www/html/index.html;
@@ -82,37 +87,51 @@ if [[ $EUID -ne 0 ]]; then
     printf "%s %s\n" "This script must be run as root, like: " "sudo ./script.sh";
     exit 1;
 else
-	while [ "$1" != "" ]; do # for catch -i key first
-        case $1 in
-			-i | --image )
-						shift
-                        imageLink=$1
-                        ;;
-        esac
-    done
-    while [ "$1" != "" ]; do
-        case $1 in
-            -s | --setup )  
-                        createWorkdir
-                        installApp
-                        downloadFiles
-                        updateNgrokService
-                        prepareService
-                        updateNginxService
-                        ;;
-            -h | --help )
-                        usage
-                        exit
-                        ;;
-            -u | --update )
-                        updateNgrokService
-                        updateNginxService
-                        exit
-                        ;;
-            * )         
-						echo "Wrong script parameter: $1. Please use \"sudo ./script.sh --help\""
-                        ;;
-        esac
-        shift
-    done
+	if [[ $# -ne 0 ]]; then
+		for (( i=1; i<=$#; i++ )) #‾‾‾‾‾‾‾‾‾# part for update image
+		do 									#
+			if [[ ${!i} == "-i" ]];then 	#
+				((i++)) 					#
+				imageLink=${!i}; 			#
+			    updateImage; 				#
+				changeOwner; 				#
+			fi; 							#
+		done; #_____________________________#
+	    while [ "$1" != "" ]; do
+	        case $1 in
+	            -s | --setup )  
+	            	createWorkdir;
+	            	installApp;
+	            	downloadFiles;
+	            	updateNgrokService;
+	            	prepareService;
+					updateImage;
+					changeOwner;
+	            	updateNginxService;
+	            	;;
+	            -h | --help )
+	            	usage;
+	            	exit 0;
+	            	;;
+	            -u | --update )
+	            	updateNgrokService;
+	            	updateNginxService;
+	            	exit 0;
+	            	;;
+				-i | --image )
+					shift
+	            	;;
+	            * )         
+					echo "Wrong script parameter: $1";
+					usage;
+					exit 1;
+	            	;;
+	        esac;
+	        shift;
+	    done;
+	else
+		echo "You don't decide any parameter.";
+		usage;
+		exit 1;
+	fi;
 fi;
